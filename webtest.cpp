@@ -59,23 +59,41 @@ auto createServerHandler() {
 	return router;
 }
 
+
 int main(int argc, char **argv) {
 	cout << "Iniciando web server..." << endl;
 
 	using traits_t = restinio::traits_t<restinio::asio_timer_manager_t, restinio::single_threaded_ostream_logger_t, router_t>;
+	using my_server_t = restinio::http_server_t<traits_t>;
 
-	try {
-		restinio::run(
-			restinio::on_this_thread<traits_t>()
-				.port(8080)
-				.address("localhost")
-				.request_handler(createServerHandler())
-		);
+	my_server_t server {
+		restinio::own_io_context(),
+		[](auto & settings) {
+			settings.port(8080);
+			settings.address("localhost");
+			settings.request_handler(createServerHandler());
+		}
+	};
 
-	} catch (const exception & ex) {
-		cerr << "Error: " << ex.what() << endl;
-		return 1;
-	}
+	std::thread restinio_control_thread {
+		[&server] {
+			restinio::run( restinio::on_thread_pool(
+								4,
+								restinio::skip_break_signal_handling(),
+								server
+							)
+			);
+		}
+	};
+
+	cout << "Press Enter to Continue";
+	getchar();
+
+	// Now RESTinio can be stopped.
+	restinio::initiate_shutdown(server);
+	// Wait for completeness of RESTinio's shutdown.
+	restinio_control_thread.join();
+
 	cout << "Terminando web server..." << endl;
 	return 0;
 }
