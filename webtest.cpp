@@ -13,12 +13,12 @@ RESP init_resp( RESP resp ) {
 }
 
 
-auto createServerHandler() {
+auto createServerHandler(string tag) {
 	auto router = std::make_unique<router_t>();
 
 	router->http_get(
 		"/",
-		[] (auto req, auto) {
+		[tag] (auto req, auto) {
 			init_resp(req->create_response())
 				.append_header(restinio::http_field::content_type, "text/html; charset=utf-8")
 				.set_body(
@@ -36,10 +36,10 @@ auto createServerHandler() {
 
 	router->http_get(
 		"/json",
-		[] (auto req, auto) {
+		[tag] (auto req, auto) {
 			init_resp(req->create_response())
 				.append_header(restinio::http_field::content_type, "text/json; charset=utf-8")
-				.set_body(R"-({"message" : "Hello world!"})-")
+				.set_body(R"-({"message" : "Hello world from "})-")
 				.done();
 			return restinio::request_accepted();
 		}
@@ -47,10 +47,10 @@ auto createServerHandler() {
 
 	router->http_get(
 		"/plain",
-		[] (auto req, auto) {
+		[tag] (auto req, auto) {
 			init_resp(req->create_response())
 				.append_header(restinio::http_field::content_type, "text/plain; charset=utf-8")
-				.set_body("Hello World!")
+				.set_body("Hello World from " + tag)
 				.done();
 			return restinio::request_accepted();
 		}
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
 		[](auto & settings) {
 			settings.port(8080);
 			settings.address("localhost");
-			settings.request_handler(createServerHandler());
+			settings.request_handler(createServerHandler("Server 1"));
 		}
 	};
 
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
 		[](auto & settings) {
 			settings.port(8081);
 			settings.address("localhost");
-			settings.request_handler(createServerHandler());
+			settings.request_handler(createServerHandler("Server 2"));
 		}
 	};
 
