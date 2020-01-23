@@ -62,15 +62,38 @@ auto createServerHandler() {
 int main(int argc, char **argv) {
 	cout << "Iniciando web server..." << endl;
 
+	restinio::asio_ns::io_context io_context;
+
 	using traits_t = restinio::traits_t<restinio::asio_timer_manager_t, restinio::single_threaded_ostream_logger_t, router_t>;
+	using my_server_t = restinio::http_server_t<traits_t>;
+
+	my_server_t server {
+		restinio::external_io_context(io_context),
+		[](auto & settings) {
+			settings.port(8080);
+			settings.address("localhost");
+			settings.request_handler(createServerHandler());
+		}
+	};
 
 	try {
-		restinio::run(
-			restinio::on_this_thread<traits_t>()
-				.port(8080)
-				.address("localhost")
-				.request_handler(createServerHandler())
+		restinio::asio_ns::signal_set break_signals{ io_context, SIGINT };
+		break_signals.async_wait(
+			[&]( const restinio::asio_ns::error_code & ec, int ) {
+				if( !ec ) {
+					server.close_sync();
+				}
+			}
 		);
+
+		restinio::asio_ns::post(
+				io_context,
+				[&]{
+					server.open_sync();
+				}
+		);
+
+		io_context.run();
 
 	} catch (const exception & ex) {
 		cerr << "Error: " << ex.what() << endl;
