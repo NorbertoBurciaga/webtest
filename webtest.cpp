@@ -76,12 +76,22 @@ int main(int argc, char **argv) {
 		}
 	};
 
+	my_server_t secondServer {
+		restinio::external_io_context(io_context),
+		[](auto & settings) {
+			settings.port(8081);
+			settings.address("localhost");
+			settings.request_handler(createServerHandler());
+		}
+	};
+
 	try {
 		restinio::asio_ns::signal_set break_signals{ io_context, SIGINT };
 		break_signals.async_wait(
 			[&]( const restinio::asio_ns::error_code & ec, int ) {
 				if( !ec ) {
 					server.close_sync();
+					secondServer.close_sync();
 				}
 			}
 		);
@@ -90,6 +100,7 @@ int main(int argc, char **argv) {
 				io_context,
 				[&]{
 					server.open_sync();
+					secondServer.open_sync();
 				}
 		);
 
