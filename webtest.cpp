@@ -1,5 +1,6 @@
 #include <iostream>
 #include <restinio/all.hpp>
+#include <restinio/tls.hpp>
 
 using namespace std;
 using router_t = restinio::router::express_router_t<>;
@@ -75,15 +76,33 @@ int main(int argc, char **argv) {
 
 	restinio::asio_ns::io_context io_context;
 
-	using traits_t = restinio::traits_t<restinio::asio_timer_manager_t, restinio::single_threaded_ostream_logger_t, router_t>;
+	// tls
+	restinio::asio_ns::ssl::context tls_context{ restinio::asio_ns::ssl::context::sslv23 };
+
+	tls_context.set_options(
+				restinio::asio_ns::ssl::context::default_workarounds
+				| restinio::asio_ns::ssl::context::no_sslv2
+				| restinio::asio_ns::ssl::context::single_dh_use );
+
+	std::string certs_dir = ".";
+
+	tls_context.use_certificate_chain_file( certs_dir + "/certificate.pem" );
+	tls_context.use_private_key_file(
+		certs_dir + "/privateKey.pem",
+		restinio::asio_ns::ssl::context::pem
+	);
+	tls_context.use_tmp_dh_file( certs_dir + "/dhparams.pem" );
+
+	using traits_t = restinio::single_thread_tls_traits_t<restinio::asio_timer_manager_t, restinio::single_threaded_ostream_logger_t, router_t>;
 	using my_server_t = restinio::http_server_t<traits_t>;
 
 	my_server_t server {
 		restinio::external_io_context(io_context),
-		[](auto & settings) {
+		[& tls_context](auto & settings) {
 			settings.port(8080);
 			settings.address("localhost");
 			settings.request_handler(createServerHandler());
+			settings.tls_context(std::move(tls_context));
 		}
 	};
 

@@ -85,6 +85,21 @@ $ cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
 $ sudo cmake --build . --config Release --target install
 ```
 
+#### How to create a self-signed Certificate for TLS
+
+It is required to generate some files to activate the TLS and use https. The private key, the certificate and the Diffie-Hellman parameters
+
+```console
+$ openssl req -newkey rsa:2048 -nodes -keyout privateKey.pem -x509 -days 365 -out certificate.pem
+$ openssl dhparam -out dhparams.pem 2048
+```
+
+To check the certificate:
+
+```console
+$ openssl x509 -text -noout -in certificate.pem
+```
+
 [Contents](#contents)
 
 
