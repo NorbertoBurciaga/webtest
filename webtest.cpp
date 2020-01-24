@@ -56,6 +56,16 @@ auto createServerHandler() {
 		}
 	);
 
+	router->non_matched_request_handler(
+		[]( auto req ){
+			return
+				req->create_response( restinio::status_not_found() )
+				.append_header_date_field()
+				.connection_close()
+				.done();
+		}
+	);
+
 	return router;
 }
 
@@ -77,7 +87,7 @@ int main(int argc, char **argv) {
 		}
 	};
 
-  try {
+	try {
 		restinio::asio_ns::signal_set break_signals{ io_context, SIGINT };
 		break_signals.async_wait(
 			[&]( const restinio::asio_ns::error_code & ec, int ) {
