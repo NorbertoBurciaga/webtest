@@ -59,6 +59,7 @@ auto createServerHandler() {
 	return router;
 }
 
+
 int main(int argc, char **argv) {
 	cout << "Iniciando web server..." << endl;
 
@@ -76,7 +77,7 @@ int main(int argc, char **argv) {
 		}
 	};
 
-	try {
+  try {
 		restinio::asio_ns::signal_set break_signals{ io_context, SIGINT };
 		break_signals.async_wait(
 			[&]( const restinio::asio_ns::error_code & ec, int ) {
