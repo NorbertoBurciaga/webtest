@@ -63,11 +63,13 @@ auto createServerHandler() {
 int main(int argc, char **argv) {
 	cout << "Iniciando web server..." << endl;
 
+	restinio::asio_ns::io_context io_context;
+
 	using traits_t = restinio::traits_t<restinio::asio_timer_manager_t, restinio::single_threaded_ostream_logger_t, router_t>;
 	using my_server_t = restinio::http_server_t<traits_t>;
 
 	my_server_t server {
-		restinio::own_io_context(),
+		restinio::external_io_context(io_context),
 		[](auto & settings) {
 			settings.port(8080);
 			settings.address("localhost");
@@ -75,25 +77,29 @@ int main(int argc, char **argv) {
 		}
 	};
 
-	std::thread restinio_control_thread {
-		[&server] {
-			restinio::run( restinio::on_thread_pool(
-								4,
-								restinio::skip_break_signal_handling(),
-								server
-							)
-			);
-		}
-	};
+  try {
+		restinio::asio_ns::signal_set break_signals{ io_context, SIGINT };
+		break_signals.async_wait(
+			[&]( const restinio::asio_ns::error_code & ec, int ) {
+				if( !ec ) {
+					server.close_sync();
+				}
+			}
+		);
 
-	cout << "Press Enter to Continue";
-	getchar();
+		restinio::asio_ns::post(
+				io_context,
+				[&]{
+					server.open_sync();
+				}
+		);
 
-	// Now RESTinio can be stopped.
-	restinio::initiate_shutdown(server);
-	// Wait for completeness of RESTinio's shutdown.
-	restinio_control_thread.join();
+		io_context.run();
 
+	} catch (const exception & ex) {
+		cerr << "Error: " << ex.what() << endl;
+		return 1;
+	}
 	cout << "Terminando web server..." << endl;
 	return 0;
 }
