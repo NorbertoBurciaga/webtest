@@ -103,6 +103,15 @@ $ openssl x509 -text -noout -in certificate.pem
 [Contents](#contents)
 
 
+#### How to compile
+
+It installs the executable file and the directory tls that contains the certificates for the https
+
+```console
+$ cmake .. -DCMAKE_INSTALL_PREFIX=. && make install
+```
+
+
 ## Testing
 
 

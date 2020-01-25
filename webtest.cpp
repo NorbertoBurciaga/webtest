@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
 				| restinio::asio_ns::ssl::context::no_sslv2
 				| restinio::asio_ns::ssl::context::single_dh_use );
 
-	std::string certs_dir = ".";
+	std::string certs_dir = "./tls";
 
 	tls_context.use_certificate_chain_file( certs_dir + "/certificate.pem" );
 	tls_context.use_private_key_file(

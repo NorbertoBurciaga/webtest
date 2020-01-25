@@ -8,3 +8,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(webtest webtest.cpp)
 target_link_libraries(webtest pthread fmt http_parser ssl crypto)
+
+install(TARGETS webtest DESTINATION bin)
+install(DIRECTORY tls DESTINATION bin)
