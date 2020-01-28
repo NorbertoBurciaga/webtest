@@ -56,6 +56,17 @@ auto createServerHandler() {
 		}
 	);
 
+	router->http_post(
+		"/v1/credentials",
+		[] (auto req, auto) {
+			return
+				init_resp( req->create_response())
+				.append_header(restinio::http_field::content_type, "text/plain; charset=utf-8")
+				.set_body( "POST request to the homepage.\nbody: " + req->body() )
+				.done();
+		}
+	);
+
 	router->non_matched_request_handler(
 		[]( auto req ){
 			return
