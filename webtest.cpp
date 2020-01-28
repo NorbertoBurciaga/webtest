@@ -1,12 +1,20 @@
 #include <iostream>
 #include <restinio/all.hpp>
+#include <rapidjson/document.h>
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+
 
 using namespace std;
 using router_t = restinio::router::express_router_t<>;
 
+
+vector<std::string> users = {R"-({"user":"Norberto","password":"thisIsAP@ssword"})-", R"-({"user":"Gabriela","password":"An0th3rP@ssw0rd"})-"};
+
+
 template < typename RESP >
 RESP init_resp( RESP resp ) {
-	resp.append_header(restinio::http_field::server, "RESTinio sample server /v.0.2");
+	resp.append_header(restinio::http_field::server, "Test web server");
 	resp.append_header_date_field();
 
 	return resp;
@@ -29,6 +37,33 @@ auto createServerHandler() {
 					"  </body>\r\n"
 					"</html>\r\n"
 				)
+				.done();
+			return restinio::request_accepted();
+		}
+	);
+
+	router->http_get(
+		"/v1/users",
+		[] (auto req, auto) {
+			rapidjson::Document document;
+
+			document.SetArray();
+
+			 rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+
+			 for (const auto user : users) {
+				 rapidjson::Value value;
+				 value.SetString(user.c_str(), user.length(), allocator);
+				 document.PushBack(value, allocator);
+			 }
+
+			 rapidjson::StringBuffer strbuf;
+			 rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+			 document.Accept(writer);
+
+			init_resp(req->create_response())
+				.append_header(restinio::http_field::content_type, "text/json; charset=utf-8")
+				.set_body(strbuf.GetString())
 				.done();
 			return restinio::request_accepted();
 		}
