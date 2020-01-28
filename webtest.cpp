@@ -1,15 +1,16 @@
 #include <iostream>
 #include <restinio/all.hpp>
 #include <rapidjson/document.h>
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
-
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/error/en.h>
 
 using namespace std;
 using router_t = restinio::router::express_router_t<>;
 
 
-vector<std::string> users = {R"-({"user":"Norberto","password":"thisIsAP@ssword"})-", R"-({"user":"Gabriela","password":"An0th3rP@ssw0rd"})-"};
+vector<std::string> users = {R"({"user":"Norberto","password":"thisIsAP@ssword"})", R"({"user":"Gabriela","password":"An0th3rP@ssw0rd"})"};
 
 
 template < typename RESP >
@@ -58,14 +59,51 @@ auto createServerHandler() {
 			 }
 
 			 rapidjson::StringBuffer strbuf;
-			 rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+			 rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(strbuf);
 			 document.Accept(writer);
 
+			 std::cout << "Valor = " << strbuf.GetString() << std::endl;
+
 			init_resp(req->create_response())
-				.append_header(restinio::http_field::content_type, "text/json; charset=utf-8")
+				.append_header(restinio::http_field::content_type, "application/json; charset=utf-8")
 				.set_body(strbuf.GetString())
 				.done();
 			return restinio::request_accepted();
+		}
+	);
+
+	router->http_post(
+		"/v1/users",
+		[] (auto req, auto) {
+			rapidjson::Document document;
+
+			if (!document.Parse(req->body().c_str()).HasParseError()
+					&& document.IsObject()
+					&& document.HasMember("user")
+					&& document.HasMember("password")
+					&& document["user"].IsString()
+					&& document["password"].IsString()) {
+				rapidjson::StringBuffer strbuf;
+				rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+				document.Accept(writer);
+
+				users.push_back(strbuf.GetString());
+				return
+					init_resp( req->create_response())
+					.append_header(restinio::http_field::content_type, "application/json; charset=utf-8")
+					.set_body("Body: " + req->body())
+					.done();
+			} else {
+				std::string error = std::string("POST error: ") + GetParseError_En(document.GetParseError()) + "\nbody: " + req->body().c_str();
+				std::cout << error << std::endl;
+				return
+					req->create_response(restinio::status_bad_request())
+					.append_header(restinio::http_field::content_type, "application/json; charset=utf-8")
+					.append_header_date_field()
+					.set_body(error)
+					.connection_close()
+					.done();
+			}
 		}
 	);
 
@@ -73,7 +111,7 @@ auto createServerHandler() {
 		"/json",
 		[] (auto req, auto) {
 			init_resp(req->create_response())
-				.append_header(restinio::http_field::content_type, "text/json; charset=utf-8")
+				.append_header(restinio::http_field::content_type, "application/json; charset=utf-8")
 				.set_body(R"-({"message" : "Hello world!"})-")
 				.done();
 			return restinio::request_accepted();
@@ -105,7 +143,7 @@ auto createServerHandler() {
 	router->non_matched_request_handler(
 		[]( auto req ){
 			return
-				req->create_response( restinio::status_not_found() )
+				req->create_response(restinio::status_not_found())
 				.append_header_date_field()
 				.connection_close()
 				.done();
